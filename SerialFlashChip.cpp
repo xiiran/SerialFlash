@@ -28,18 +28,12 @@
 #include "SerialFlash.h"
 #include "util/SerialFlash_directwrite.h"
 
-#define CSASSERT()  DIRECT_WRITE_LOW(cspin_basereg, cspin_bitmask)
-#define CSRELEASE() DIRECT_WRITE_HIGH(cspin_basereg, cspin_bitmask)
-#define SPICONFIG   SPISettings(50000000, MSBFIRST, SPI_MODE0)
-
-uint16_t SerialFlashChip::dirindex = 0;
-uint8_t SerialFlashChip::flags = 0;
-uint8_t SerialFlashChip::busy = 0;
+#define CSASSERT()  DIRECT_WRITE_LOW(cspin_basereg, cspin)
+#define CSRELEASE() DIRECT_WRITE_HIGH(cspin_basereg, cspin)
+#define SPICONFIG   SPIsetto
 
 static volatile IO_REG_TYPE *cspin_basereg;
 static IO_REG_TYPE cspin_bitmask;
-
-static SPIClass& SPIPORT = SPI;
 
 #define FLAG_32BIT_ADDR		0x01	// larger than 16 MByte address
 #define FLAG_STATUS_CMD70	0x02	// requires special busy flag check
@@ -336,18 +330,22 @@ bool SerialFlashChip::ready()
 
 bool SerialFlashChip::begin(SPIClass& device, uint8_t pin)
 {
+	cspin = pin;
 	SPIPORT = device;
 	return begin(pin);
 }
 
 bool SerialFlashChip::begin(uint8_t pin)
 {
+	cspin = pin;
+	if(pin == 5) currentFlash = this;
+
 	uint8_t id[5];
 	uint8_t f;
 	uint32_t size;
 
-	cspin_basereg = PIN_TO_BASEREG(pin);
-	cspin_bitmask = PIN_TO_BITMASK(pin);
+	// cspin_basereg = PIN_TO_BASEREG(pin);
+	// cspin_bitmask = PIN_TO_BITMASK(pin);
 	SPIPORT.begin();
 	pinMode(pin, OUTPUT);
 	CSRELEASE();
@@ -527,4 +525,5 @@ AT25SF128A              32      64
 // LE25U40CMC		1/2	64	62 06 13
 // Adesto AT25SF128A    16              1F 89 01
 
-SerialFlashChip SerialFlash;
+SerialFlashChip SerialFlash(SPI);
+SerialFlashChip* currentFlash;

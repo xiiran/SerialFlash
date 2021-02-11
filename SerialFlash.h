@@ -33,42 +33,58 @@
 
 class SerialFlashFile;
 
+
 class SerialFlashChip
 {
 public:
-	static bool begin(SPIClass& device, uint8_t pin = 6);
-	static bool begin(uint8_t pin = 6);
-	static uint32_t capacity(const uint8_t *id);
-	static uint32_t blockSize();
-	static void sleep();
-	static void wakeup();
-	static void readID(uint8_t *buf);
-	static void readSerialNumber(uint8_t *buf);
-	static void read(uint32_t addr, void *buf, uint32_t len);
-	static bool ready();
-	static void wait();
-	static void write(uint32_t addr, const void *buf, uint32_t len);
-	static void eraseAll();
-	static void eraseBlock(uint32_t addr);
+	SerialFlashChip(SPIClass& spi) : SPIPORT(spi){
 
-	static SerialFlashFile open(const char *filename);
-	static bool create(const char *filename, uint32_t length, uint32_t align = 0);
-	static bool createErasable(const char *filename, uint32_t length) {
+	};
+	bool begin(SPIClass& device, uint8_t pin = 6);
+	bool begin(uint8_t pin = 6);
+	void setSettings(const SPISettings settings){
+		SPIsetto = settings;
+	};
+	uint32_t capacity(const uint8_t *id);
+	uint32_t blockSize();
+	void sleep();
+	void wakeup();
+	void readID(uint8_t *buf);
+	void readSerialNumber(uint8_t *buf);
+	void read(uint32_t addr, void *buf, uint32_t len);
+	bool ready();
+	void wait();
+	void write(uint32_t addr, const void *buf, uint32_t len);
+	void eraseAll();
+	void eraseBlock(uint32_t addr);
+
+	SerialFlashFile open(const char *filename);
+	bool create(const char *filename, uint32_t length, uint32_t align = 0);
+	bool createErasable(const char *filename, uint32_t length) {
 		return create(filename, length, blockSize());
 	}
-	static bool exists(const char *filename);
-	static bool remove(const char *filename);
-	static bool remove(SerialFlashFile &file);
-	static void opendir() { dirindex = 0; }
-	static bool readdir(char *filename, uint32_t strsize, uint32_t &filesize);
+	bool exists(const char *filename);
+	bool remove(const char *filename);
+	bool remove(SerialFlashFile &file);
+	void opendir() { dirindex = 0; }
+	bool readdir(char *filename, uint32_t strsize, uint32_t &filesize);
 private:
-	static uint16_t dirindex; // current position for readdir()
-	static uint8_t flags;	// chip features
-	static uint8_t busy;	// 0 = ready
+	uint16_t dirindex = 0; // current position for readdir()
+	uint8_t flags = 0;	// chip features
+	uint8_t busy = 0;	// 0 = ready
 				// 1 = suspendable program operation
 				// 2 = suspendable erase operation
 				// 3 = busy for realz!!
+
+	SPIClass& SPIPORT;
+
+	int cspin = 0;
+
+	SPISettings SPIsetto;
+
 };
+
+extern SerialFlashChip* currentFlash;
 
 extern SerialFlashChip SerialFlash;
 
@@ -86,7 +102,7 @@ public:
 			if (offset >= length) return 0;
 			rdlen = length - offset;
 		}
-		SerialFlash.read(address + offset, buf, rdlen);
+		currentFlash->read(address + offset, buf, rdlen);
 		offset += rdlen;
 		return rdlen;
 	}
@@ -95,7 +111,7 @@ public:
 			if (offset >= length) return 0;
 			wrlen = length - offset;
 		}
-		SerialFlash.write(address + offset, buf, wrlen);
+		currentFlash->write(address + offset, buf, wrlen);
 		offset += wrlen;
 		return wrlen;
 	}
